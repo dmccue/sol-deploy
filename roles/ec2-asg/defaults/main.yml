@@ -1,0 +1,60 @@
+---
+
+aws_region: "eu-west-1"
+destinationCidrBlock: "0.0.0.0/0"
+instance_architecture: "amd64" # amd64 for t3/t3a or arm64 for t4g
+vpc_cidr_block: "10.50.0.0/16"
+vpc_name: "testvpc1"
+vpc_acl_name: "testNACL1"
+asg_name: "testASG1"
+asg_lc_name: "testASGlc1"
+vpc_subnets:
+  public-a:
+    cidr: "10.50.1.0/24"
+    az: "{{ aws_region }}a"
+  public-b:
+    cidr: "10.50.2.0/24"
+    az: "{{ aws_region }}b"
+  public-c:
+    cidr: "10.50.3.0/24"
+    az: "{{ aws_region }}c"
+  private-a:
+    cidr: "10.50.4.0/24"
+    az: "{{ aws_region }}a"
+  private-b:
+    cidr: "10.50.5.0/24"
+    az: "{{ aws_region }}b"
+  private-c:
+    cidr: "10.50.6.0/24"
+    az: "{{ aws_region }}c"
+key_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
+default_user: "ubuntu"
+ami_image:
+  owner: 099720109477 # ubuntu/canonical
+  name: "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-{{ instance_architecture }}-server-"
+  # aws ec2 describe-images --owners 099720109477 --output=text | grep ubuntu/images/hvm-ssd/ubuntu-focal-20.04-
+instance_type: 't3.2xlarge'  # amd64 - match architecture to ami_image
+#instance_type: 't4g.2xlarge' # arm64
+volume_size: 25
+vpc_security_groups:
+  - name: vpc
+    description: "Allow internal traffic in the VPC"
+    rules:
+      - proto: -1
+        group_name: vpc
+        ports: [-1]
+  - name: allow-public-ssh
+    description: "Allow public SSH"
+    rules:
+      - proto: tcp
+        cidr_ip: "{{ destinationCidrBlock }}"
+        ports: [22]
+  - name: allow-public-http
+    description: "Allow public web traffic"
+    rules:
+      - proto: tcp
+        cidr_ip: "{{ destinationCidrBlock }}"
+        ports: [8000-10000]
+      - proto: udp
+        cidr_ip: "{{ destinationCidrBlock }}"
+        ports: [8000-10000]

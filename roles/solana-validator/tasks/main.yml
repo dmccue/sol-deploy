@@ -1,6 +1,7 @@
 ---
 
-- ping:
+- name: test ssh connectivity
+  ping:
 
 - name: root activities
   block:
@@ -16,13 +17,10 @@
     - name: install packages
       apt:
         name: "{{ item }}"
-      loop:
-        - tuned
-        - atop
-        - htop
-        - sysstat
+      loop: "{{ ubuntu_packages }}"
         
-    - shell: tuned-adm profile throughput-performance
+    - name: set tuned profile
+      shell: tuned-adm profile throughput-performance
 
     - name: set sysctl settings
       ansible.posix.sysctl:
@@ -245,17 +243,18 @@
 
 
 
-- shell:
-    executable: /bin/bash
-    chdir: "{{ solana_dir }}"
-    cmd: |
-      source ~/.profile
+# - name: setup solana development environment
+#   shell:
+#     executable: /bin/bash
+#     chdir: "{{ solana_dir }}"
+#     cmd: |
+#       source ~/.profile
       
-      # # Setup development env
-      # apt -y install libssl-dev libudev-dev pkg-config zlib1g-dev llvm clang make && \
-      # su -l {{ default_user }} -c "
-      #   /usr/local/bin/solana-dev-setup
-      # ">logs/dev-setup.log &
+#       # # Setup development env
+#       # apt -y install libssl-dev libudev-dev pkg-config zlib1g-dev llvm clang make && \
+#       # su -l {{ default_user }} -c "
+#       #   /usr/local/bin/solana-dev-setup
+#       # ">logs/dev-setup.log &
 
 
 - block:
@@ -324,6 +323,9 @@
 - name: debug - validators
   debug: msg="{{ item }}"
   loop: "{{ result.json | community.general.json_query('result[*].pubkey') }}"
+  loop_control:
+    label: "{{ item }}"
+  
 
 
 
@@ -344,4 +346,4 @@
   debug: msg="{{ result.json.result | to_nice_yaml }}"
   #debug: msg="{{ result.json.result | community.general.json_query('result[*].pubkey') | default([[]])| first }}"
 
-- debug: msg="{{ validator_pubkey }} - {{ voter_pubkey }}"
+- debug: msg="validator public key:{{ validator_pubkey }} voter public key:{{ voter_pubkey }}"

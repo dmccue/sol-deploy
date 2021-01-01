@@ -12,3 +12,10 @@ sysctl_config:
   net.core.wmem_max: 134217728
   vm.max_map_count: '500000'
   vm.swappiness: 0
+ubuntu_packages:
+  - tuned
+  - atop
+  - htop
+  - sysstat
+  - net-tools
+  - curl
