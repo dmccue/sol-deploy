@@ -37,7 +37,7 @@
                 az: "{{ aws_region }}c"
             key_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
             ami_image:
-              owner: 099720109477 # ubuntu
+              owner: 099720109477 # ubuntu/canonical
               name: "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-{{ instance_architecture }}-server-"
               # aws ec2 describe-images --owners 099720109477 --output=text | grep ubuntu/images/hvm-ssd/ubuntu-focal-20.04-
             instance_type: 't3.2xlarge'  # amd64 - match architecture to ami_image
