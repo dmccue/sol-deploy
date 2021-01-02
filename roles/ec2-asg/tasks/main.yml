@@ -68,7 +68,7 @@
         lookup: id
         state: absent
       loop: "{{ vpc_route_tables | community.general.json_query('results[*].route_tables[*]') | default([[]]) | first }}"
-      when: item.associations | selectattr('main') | length == 0
+      when: vpc_route_tables.results and item.associations | selectattr('main') | length == 0
 
     # delete IGW
     - name: delete vpc IGW
@@ -91,7 +91,7 @@
         nacl_id: "{{ item.nacl_id }}"
         state: absent
       loop: "{{ vpc_nacls | community.general.json_query('results[*].nacls[*]') | default([[]]) | first }}"
-      when: not item.is_default
+      when: vpc_nacls.results and not item.is_default
 
     # delete Subnets
     - name: get vpc subnets
@@ -106,6 +106,7 @@
         cidr: "{{ item.cidr_block }}"
         state: absent
       loop: "{{ vpc_subnets | community.general.json_query('results[*].subnets[*]') | default([[]]) | first }}"
+      when: vpc_subnets.results
 
     # delete VPC
     - name: delete vpc
