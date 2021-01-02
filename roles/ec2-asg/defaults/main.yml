@@ -1,6 +1,10 @@
 ---
 
 aws_region: "eu-west-1"
+local_pip_packages:
+  - boto
+  - boto3
+  - ansible
 destinationCidrBlock: "0.0.0.0/0"
 instance_architecture: "amd64" # amd64 for t3/t3a or arm64 for t4g
 vpc_cidr_block: "10.50.0.0/16"

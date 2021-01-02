@@ -13,10 +13,7 @@
     - name: install python packages
       pip:
         name: "{{ item }}"
-      loop:
-        - boto
-        - boto3
-        - ansible
+      loop: "{{ local_pip_packages }}"
 
   tags:
     - always
@@ -174,18 +171,18 @@
     name: "{{ vpc_acl_name }}"
     subnets: "{{ created_vpc_subnets.results | map(attribute='subnet') | selectattr('map_public_ip_on_launch') | map(attribute='id') | list }}"
     ingress:  # incoming connections
-      - [100, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 22, 22]  # tcp/ssh
-      - [200, 'udp', 'allow', "{{ destinationCidrBlock }}", null, null, 8000, 10000]  # udp/sol
-      - [300, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 1024, 65535]  # tcp/ephemeral
-      # - [100, 'icmp', 'allow', "{{ destinationCidrBlock }}", 0, 8]  # icmp
-      # - [200, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 80, 80]  # tcp/http
-    egress:  # outgoing connections
-      - [100, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 80, 80]  # tcp/http
-      - [200, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 443, 443]  # tcp/https
+      - [100, 'icmp', 'allow', "{{ destinationCidrBlock }}", 0, 8]  # icmp
+      - [200, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 22, 22]  # tcp/ssh
       - [300, 'udp', 'allow', "{{ destinationCidrBlock }}", null, null, 8000, 10000]  # udp/sol
       - [400, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 1024, 65535]  # tcp/ephemeral
-      # - [100, 'icmp', 'allow', "{{ destinationCidrBlock }}", 0, 8]  # icmp
-      # - [200, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 22, 22]
+    egress:  # outgoing connections
+      - [100, 'icmp', 'allow', "{{ destinationCidrBlock }}", 0, 8]  # icmp
+      - [200, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 22, 22] # tcp/ssh
+      - [300, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 80, 80]  # tcp/http
+      - [400, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 443, 443]  # tcp/https
+      - [500, 'udp', 'allow', "{{ destinationCidrBlock }}", null, null, 8000, 10000]  # udp/sol
+      - [600, 'tcp', 'allow', "{{ destinationCidrBlock }}", null, null, 1024, 65535]  # tcp/ephemeral
+
 
 - name: create ec2 public route table
   community.aws.ec2_vpc_route_table:
@@ -226,12 +223,7 @@
     availability_zones: "{{ created_vpc_subnets.results | map(attribute='subnet.availability_zone') | list | unique }}"
     vpc_zone_identifier: "{{ created_vpc_subnets.results | map(attribute='subnet') | selectattr('map_public_ip_on_launch') | map(attribute='id') | list }}"
     launch_config_name: "{{ launch_config.name }}"
-    # mixed_instances_policy:
-    #   instance_types:
-    #     - t3a.2xlarge
-    #     - t3.2xlarge
-    #     - t2.2xlarge
-    min_size: 0
+    min_size: 1
     desired_capacity: 1
     max_size: 1
     replace_all_instances: true

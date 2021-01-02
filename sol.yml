@@ -7,18 +7,6 @@
   roles:
     - ec2-asg
 
-
-# - name: create ansible group
-#   connection: local
-#   gather_facts: false
-#   hosts: localhost
-#   vars:
-#     ansible_user: 'ubuntu' #fix this location
-#     default_user: 'ubuntu' #fix this location
-#   tags:
-#     - application
-
-
 - name: configure instance application
   gather_facts: true
   hosts: asg_instances
