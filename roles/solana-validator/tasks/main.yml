@@ -8,8 +8,8 @@
     - name: Set timezone to Europe/London
       community.general.timezone:
         name: Europe/London
-        
-    - name: Update distro
+
+    - name: update distro
       apt:
         update_cache: true
         upgrade: true
@@ -18,7 +18,7 @@
       apt:
         name: "{{ item }}"
       loop: "{{ ubuntu_packages }}"
-        
+
     - name: set tuned profile
       shell: tuned-adm profile throughput-performance
 
@@ -153,7 +153,7 @@
         --identity     {{ solana_dir }}/keys/validator-keypair.json \
         --vote-account {{ solana_dir }}/keys/vote-account-keypair.json \
         --ledger       {{ solana_dir }}/validator-ledger \
-        --rpc-port     8899 \
+        --rpc-port     {{ solana_port_rpc }} \
         --entrypoint   devnet.solana.com:8001 \
         --limit-ledger-size \
         --log          {{ solana_dir }}/logs/solana-validator.log
@@ -282,13 +282,6 @@
 
   become: true
 
-- name: diagnostic links
-  shell: 
-    executable: /bin/bash
-    cmd: |
-      source ~/.profile
-      
-      echo "https://metrics.solana.com:3000/d/monitor-edge/cluster-telemetry-edge?refresh=60s&orgId=2&var-datasource=Solana%20Metrics%20(read-only)&var-testnet=devnet&var-hostid=$(cat {{ solana_dir }}/keys/validator-keypair.pubkey)" > links.txt
 
 - name: List ssh endpoints
   debug: msg="ssh {{ default_user }}@{{ ansible_host | default("unknown") }}"
@@ -306,8 +299,18 @@
     validator_pubkey: "{{ validator_key.content | b64decode | trim}}"
     voter_pubkey: "{{ voter_key.content | b64decode | trim }}"
 
+- name: create diagnostic links
+  copy:
+    dest: "~/links.txt"
+    mode: '0660'
+    content: |
+      https://metrics.solana.com:3000/d/monitor-edge/cluster-telemetry-edge?refresh=60s&orgId=2&var-datasource=Solana%20Metrics%20(read-only)&var-testnet=devnet&var-hostid={{ validator_pubkey }}
 
-- name: retrieve list of cluster nodes
+- name: test validator rpc port is responding
+  wait_for:
+    port: "{{ solana_port_rpc }}"
+
+- name: test validator is present in list of cluster nodes
   uri:
     url: http://devnet.solana.com
     method: POST
@@ -316,17 +319,9 @@
     body: '{"jsonrpc":"2.0","id":1, "method":"getClusterNodes"}'
     body_format: json
   register: result
-  until: result.json.result | length > 0
-  retries: 5
-  delay: 2
-
-- name: debug - validators
-  debug: msg="{{ item }}"
-  loop: "{{ result.json | community.general.json_query('result[*].pubkey') }}"
-  loop_control:
-    label: "{{ item }}"
-  
-
+  until: "validator_pubkey in result | community.general.json_query('result[*].pubkey')"
+  retries: 10
+  delay: 10
 
 
 - name: retrieve list of vote accounts
