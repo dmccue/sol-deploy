@@ -209,8 +209,9 @@
       - device_name: /dev/sda1
         delete_on_termination: true
         volume_size: "{{ volume_size }}"
-        volume_type: io1
-        iops: 1250 # 50 iops per GB for io1 (50:1 ratio) - 1250
+        volume_type: gp2 #io1
+        #iops: 1250 # 50 iops per GB for io1 (50:1 ratio) - 1250
+        #throughput: 1000
     user_data: |
       #!/bin/bash
       echo "end - $(date +%s) - $(date)" >userdata.log
