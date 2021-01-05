@@ -241,22 +241,18 @@
   when: autoscaling_group is defined
   
 
-- block:
+- name: setup group for application tag
+  block:
     - name: Gather information on ASG Instances
       community.aws.ec2_asg_info:
         name: "{{ asg_name }}"
-      register: autoscaling_group_instances
-      when: autoscaling_group is not defined
-    - name: Set list of autoscaling instance IDs
-      set_fact:
-        asg_instances: "{{ autoscaling_group_instances | community.general.json_query('results[*].instances[*].instance_id') | default([[]])| first }}"
-      when: not autoscaling_group is defined
-    
-    - name: Gather information on ec2 instances
+      register: autoscaling_group
+
+    - name: gather information on ec2 instances
       community.aws.ec2_instance_info:
-        instance_ids: "{{ asg_instances }}"
+        instance_ids: "{{ autoscaling_group | community.general.json_query('results[*].instances[*].instance_id') | default([[]])| first }}"
       register: ec2_instances
-    
+
     - name: create instance group
       add_host:
         name: "{{ item.instance_id }}"
@@ -267,5 +263,7 @@
       loop: "{{ ec2_instances.instances }}"
       loop_control:
         label: "{{ item.instance_id }}"
+
   tags:
     - application
+    - never
