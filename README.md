@@ -1,6 +1,8 @@
 # sol-deploy
 solana deployment tool
 
+![Ansible Lint](https://github.com/dmccue/sol-deploy/workflows/Ansible%20Lint/badge.svg)
+
 ```bash
 # create ec2 asg and configure instances
 ansible-playbook sol.yml
