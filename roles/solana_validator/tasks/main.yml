@@ -295,8 +295,9 @@
     src: "{{ solana_dir }}/keys/vote-account-keypair.pubkey"
   register: voter_key
   
-- set_fact:
-    validator_pubkey: "{{ validator_key.content | b64decode | trim}}"
+- name: Set public keys to variables
+  set_fact:
+    validator_pubkey: "{{ validator_key.content | b64decode | trim }}"
     voter_pubkey: "{{ voter_key.content | b64decode | trim }}"
 
 - name: create diagnostic links

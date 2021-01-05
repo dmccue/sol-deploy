@@ -1,10 +1,11 @@
-- block:
+- name: check and setup local environment
+  block:
 
     # This is to support boto v2 modules which do not yet support boto v3
     # e.g. community.aws.ec2_vpc_route_table_info
     - name: Check environment variables have been set
       fail: msg="Please set '{{ item }}' environment variable"
-      when: not lookup('env', item) or lookup('env', item) == ""
+      when: not lookup('env', item) or not lookup('env', item)
       loop:
         - AWS_ACCESS_KEY_ID
         - AWS_SECRET_ACCESS_KEY
@@ -234,7 +235,8 @@
         propagate_at_launch: true
   register: autoscaling_group
   
-- set_fact:
+- name: Set list of autoscaling instance IDs
+  set_fact:
     asg_instances: "{{ autoscaling_group.instances }}"
   when: autoscaling_group is defined
   
@@ -244,8 +246,9 @@
       community.aws.ec2_asg_info:
         name: "{{ asg_name }}"
       register: autoscaling_group_instances
-      when: not autoscaling_group is defined
-    - set_fact:
+      when: autoscaling_group is not defined
+    - name: Set list of autoscaling instance IDs
+      set_fact:
         asg_instances: "{{ autoscaling_group_instances | community.general.json_query('results[*].instances[*].instance_id') | default([[]])| first }}"
       when: not autoscaling_group is defined
     
