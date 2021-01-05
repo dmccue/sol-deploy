@@ -188,15 +188,19 @@
 #     dest: ~/solana-release-x86_64-unknown-linux-gnu.tar.bz2
 #     mode: '0664'
 
+- name: check solana client exists
+  stat:
+    path: {{ solana_client_bin }}/solana
+  register: solana_client_installed
+
 - name: install solana client
   shell: 
     executable: /bin/bash
     chdir: "{{ solana_dir }}"
     cmd: |
       source ~/.profile
-      
       which solana || ./bin/solana-install-init stable
-
+  when: solana_client_installed.stat.isreg is not defined or not solana_client_installed.stat.isreg
 
 - name: install solana validator
   shell:
@@ -204,21 +208,26 @@
     chdir: "{{ solana_dir }}"
     cmd: |
       source ~/.profile
-
+      
       solanapath=$(echo $PATH | cut -d: -f1)
       for file in $(find $solanapath -maxdepth 1 -type f); do $file -V; done &> logs/solana-versions.txt
-
-      # Environment
-      echo Set Environment:
+      
+      echo set environment:
       solana config set --url http://{{ solana_environment_endpoint }}
       
-      # Validator Keygen - unique per solana user
+      echo generate validator keypair:
       echo -n '{{ solana_validator_key.private }}' > keys/validator-keypair.json
-      echo Get Validator Keypair Public Key:
-      solana-keygen pubkey keys/validator-keypair.json > keys/validator-keypair.pubkey
-      cat keys/validator-keypair.pubkey
-      echo Set Validator Keypair:
+      echo get validator publickey:
+      solana-keygen pubkey keys/validator-keypair.json | tee keys/validator-keypair.pubkey
+      echo set validator keypair:
       solana config set --keypair keys/validator-keypair.json
+      
+      echo generate voteaccount keypair:
+      [ ! -f 'keys/vote-account-keypair.json' ] && solana-keygen new -o keys/vote-account-keypair.json --no-passphrase
+      echo get voteaccount publickey:
+      solana-keygen pubkey keys/vote-account-keypair.json | tee keys/vote-account-keypair.pubkey
+      echo set voteaccount keypair:
+      solana create-vote-account keys/vote-account-keypair.json keys/validator-keypair.json
       
       # Setup Balance
       echo Airdrop:
@@ -228,19 +237,10 @@
       echo Balance Lamports:
       solana balance --lamports
       
-      # Vote Account Keygen
-      echo Gen Vote Account KeyPair:
-      [ ! -f 'keys/vote-account-keypair.json' ] && solana-keygen new -o keys/vote-account-keypair.json --no-passphrase
-      echo Get Vote Account Keypair Public Key:
-      solana-keygen pubkey keys/vote-account-keypair.json > keys/vote-account-keypair.pubkey
-      cat keys/vote-account-keypair.pubkey
-      echo Set VoteAccount:
-      solana create-vote-account keys/vote-account-keypair.json keys/validator-keypair.json
-      
-      # Start vanity keygen
       echo Starting Vanity KeyGen:
       #solana-keygen grind --starts-with cwhee1:2 &> logs/cloudwheel-vanity.log &
-
+      
+  when: solana_client_installed.stat.isreg is not defined or not solana_client_installed.stat.isreg
 
 
 # - name: setup solana development environment

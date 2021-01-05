@@ -1,5 +1,6 @@
 default_user: ubuntu
 solana_dir: /opt/solana
+solana_client_bin: /home/{{ default_user }}/.local/share/solana/install/active_release/bin
 solana_environment_endpoint: devnet.solana.com
 solana_environment_entrypoint: entrypoint.devnet.solana.com
 solana_environment_entrypoint_port: 8001
