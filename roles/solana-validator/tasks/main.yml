@@ -5,7 +5,7 @@
 
 - name: root activities
   block:
-    - name: Set timezone to Europe/London
+    - name: set timezone to Europe/London
       community.general.timezone:
         name: Europe/London
 
@@ -20,7 +20,7 @@
       loop: "{{ ubuntu_packages }}"
 
     - name: set tuned profile
-      shell: tuned-adm profile throughput-performance
+      shell: tuned-adm active | grep "{{ tuned_profile }}" || tuned-adm profile {{ tuned_profile }}
 
     - name: set sysctl settings
       ansible.posix.sysctl:
@@ -29,14 +29,14 @@
         sysctl_set: yes
       with_dict: "{{ sysctl_config }}"
 
-    - name: Add or modify hard nofile limits for wildcard domain
+    - name: add or modify hard nofile limits for wildcard domain
       community.general.pam_limits:
         domain: '*'
         limit_type: hard
         limit_item: nofile
         value: "{{ sysctl_config['vm.max_map_count'] }}"
         
-    - name: Create logrotate file
+    - name: create logrotate file
       copy:
         dest: /etc/logrotate.d/sol
         mode: '0644'
@@ -50,7 +50,7 @@
             endscript
           }
     
-    - name: Create sol.service
+    - name: create sol.service
       copy:
         dest: /etc/systemd/system/sol.service
         mode: '0644'
@@ -74,7 +74,7 @@
           [Install]
           WantedBy=multi-user.target
 
-    - name: Create solana-sys-tuner.service
+    - name: create solana-sys-tuner.service
       copy:
         dest: /etc/systemd/system/solana-sys-tuner.service
         mode: '0644'
@@ -97,7 +97,7 @@
           [Install]
           WantedBy=multi-user.target
 
-    - name: Create custom solana-dev-setup
+    - name: create custom solana-dev-setup
       copy:
         dest: /usr/local/bin/solana-dev-setup
         mode: '0775'
@@ -112,7 +112,7 @@
           # ./run.sh &> ../solana-run.log &
 
 
-    - name: Create custom solana-bench-dev
+    - name: create custom solana-bench-dev
       copy:
         dest: /usr/local/bin/solana-bench-dev
         mode: '0775'
@@ -143,20 +143,27 @@
     - logs
     - keys
 
-- name: Create validator.sh
+- name: create validator.sh
   copy:
     dest: "{{ solana_dir }}/bin/validator.sh"
     mode: '0740'
     content: |
       #!/bin/bash
+      export SOLANA_METRICS_CONFIG="host=https://metrics.solana.com:8086,db=devnet,u=scratch_writer,p=topsecret"
+      
       solana-validator \
-        --identity     {{ solana_dir }}/keys/validator-keypair.json \
-        --vote-account {{ solana_dir }}/keys/vote-account-keypair.json \
-        --ledger       {{ solana_dir }}/validator-ledger \
-        --rpc-port     {{ solana_port_rpc }} \
-        --entrypoint   devnet.solana.com:8001 \
+        --identity            {{ solana_dir }}/keys/validator-keypair.json \
+        --vote-account        {{ solana_dir }}/keys/vote-account-keypair.json \
+        --ledger              {{ solana_dir }}/validator-ledger \
+        --rpc-port            {{ solana_port_rpc }} \
+        --dynamic-port-range  {{ solana_port_dynamicrange }} \
+        --no-untrusted-rpc \
+        --trusted-validator   dv1LfzJvDF7S1fBKpFgKoKXK5yoSosmkAdfbxBo1GqJ \
+        --expected-genesis-hash EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG \
+        --entrypoint          {{ solana_environment_entrypoint }}:{{ solana_environment_entrypoint_port }} \
+        --wal-recovery-mode skip_any_corrupted_record \
         --limit-ledger-size \
-        --log          {{ solana_dir }}/logs/solana-validator.log
+        --log                 {{ solana_dir }}/logs/solana-validator.log
       EOF
 
 - name: Create solana-sys-tuner.sh
@@ -191,26 +198,19 @@
       which solana || ./bin/solana-install-init stable
 
 
-- name: record solana versions
-  shell: 
-    executable: /bin/bash
-    chdir: "{{ solana_dir }}"
-    cmd: |
-      source ~/.profile
-      
-      solanapath=$(echo $PATH | cut -d: -f1)
-      for file in $(find $solanapath -maxdepth 1 -type f); do $file -V; done &> logs/solana-versions.txt
-
 - name: install solana validator
   shell:
     executable: /bin/bash
     chdir: "{{ solana_dir }}"
     cmd: |
       source ~/.profile
-      
+
+      solanapath=$(echo $PATH | cut -d: -f1)
+      for file in $(find $solanapath -maxdepth 1 -type f); do $file -V; done &> logs/solana-versions.txt
+
       # Environment
       echo Set Environment:
-      solana config set --url {{ solana_environment_url }}
+      solana config set --url http://{{ solana_environment_endpoint }}
       
       # Validator Keygen - unique per solana user
       echo -n '{{ solana_validator_key.private }}' > keys/validator-keypair.json
@@ -304,34 +304,37 @@
     dest: "~/links.txt"
     mode: '0660'
     content: |
-      https://metrics.solana.com:3000/d/monitor-edge/cluster-telemetry-edge?refresh=60s&orgId=2&var-datasource=Solana%20Metrics%20(read-only)&var-testnet=devnet&var-hostid={{ validator_pubkey }}
+      Metrics link - https://metrics.solana.com:3000/d/monitor-edge/cluster-telemetry-edge?refresh=60s&orgId=2&var-datasource=Solana%20Metrics%20(read-only)&var-testnet=devnet&var-hostid={{ validator_pubkey }}
 
 - name: test validator rpc port is responding
   wait_for:
     port: "{{ solana_port_rpc }}"
+    timeout: 720
 
 - name: test validator is present in list of cluster nodes
   uri:
-    url: http://devnet.solana.com
+    url: http://{{ solana_environment_endpoint }}
     method: POST
     return_content: yes
     status_code: 200
-    body: '{"jsonrpc":"2.0","id":1, "method":"getClusterNodes"}'
+    body: '{"jsonrpc":"2.0","id":1,"method":"getClusterNodes"}'
     body_format: json
+  delegate_to: localhost
   register: result
-  until: "validator_pubkey in result | community.general.json_query('result[*].pubkey')"
+  until: "validator_pubkey in result.json | community.general.json_query('result[*].pubkey')"
   retries: 10
   delay: 10
 
 
 - name: retrieve list of vote accounts
   uri:
-    url: http://devnet.solana.com
+    url: http://{{ solana_environment_endpoint }}
     method: POST
     return_content: yes
     status_code: 200
-    body: '{"jsonrpc":"2.0","id":1, "method":"getVoteAccounts"}'
+    body: '{"jsonrpc":"2.0","id":1,"method":"getVoteAccounts"}'
     body_format: json
+  delegate_to: localhost
   register: result
   until: result.json.result | length > 0
   retries: 5

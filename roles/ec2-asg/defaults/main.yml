@@ -39,7 +39,7 @@ ami_image:
   # aws ec2 describe-images --owners 099720109477 --output=text | grep ubuntu/images/hvm-ssd/ubuntu-focal-20.04-
 instance_type: 't3.2xlarge'  # amd64 - match architecture to ami_image
 #instance_type: 't4g.2xlarge' # arm64
-volume_size: 25
+volume_size: 50
 vpc_security_groups:
   - name: vpc
     description: "Allow internal traffic in the VPC"
