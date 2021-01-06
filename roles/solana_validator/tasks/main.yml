@@ -190,7 +190,7 @@
 
 - name: check solana client exists
   stat:
-    path: {{ solana_client_bin }}/solana
+    path: "{{ solana_client_bin }}/solana"
   register: solana_client_installed
 
 - name: install solana client
