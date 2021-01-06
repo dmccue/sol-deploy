@@ -234,12 +234,12 @@
       - environment: test
         propagate_at_launch: true
   register: autoscaling_group
-  
+
 - name: Set list of autoscaling instance IDs
   set_fact:
     asg_instances: "{{ autoscaling_group.instances }}"
   when: autoscaling_group is defined
-  
+
 
 - name: setup group for application tag
   block:

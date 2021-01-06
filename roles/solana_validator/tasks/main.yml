@@ -35,7 +35,7 @@
         limit_type: hard
         limit_item: nofile
         value: "{{ sysctl_config['vm.max_map_count'] }}"
-        
+
     - name: create logrotate file
       copy:
         dest: /etc/logrotate.d/sol
@@ -49,7 +49,7 @@
               systemctl kill -s USR1 sol.service
             endscript
           }
-    
+
     - name: create sol.service
       copy:
         dest: /etc/systemd/system/sol.service
@@ -60,7 +60,7 @@
           After=network.target
           Wants=solana-sys-tuner.service
           StartLimitIntervalSec=0
-          
+
           [Service]
           Type=simple
           Restart=always
@@ -70,7 +70,7 @@
           LogRateLimitIntervalSec=0
           Environment="PATH=/bin:/usr/bin:/home/{{ default_user }}/.local/share/solana/install/active_release/bin"
           ExecStart={{ solana_dir }}/bin/validator.sh
-          
+
           [Install]
           WantedBy=multi-user.target
 
@@ -83,7 +83,7 @@
           Description=Solana Sys Tuner
           After=network.target
           StartLimitIntervalSec=0
-          
+
           [Service]
           Type=simple
           Restart=always
@@ -93,7 +93,7 @@
           LogRateLimitIntervalSec=0
           Environment="PATH=/bin:/usr/bin:/home/{{ default_user }}/.local/share/solana/install/active_release/bin"
           ExecStart={{ solana_dir }}/bin/solana-sys-tuner.sh
-          
+
           [Install]
           WantedBy=multi-user.target
 
@@ -150,7 +150,7 @@
     content: |
       #!/bin/bash
       export SOLANA_METRICS_CONFIG="host=https://metrics.solana.com:8086,db=devnet,u=scratch_writer,p=topsecret"
-      
+
       solana-validator \
         --identity            {{ solana_dir }}/keys/validator-keypair.json \
         --vote-account        {{ solana_dir }}/keys/vote-account-keypair.json \
@@ -194,7 +194,7 @@
   register: solana_client_installed
 
 - name: install solana client
-  shell: 
+  shell:
     executable: /bin/bash
     chdir: "{{ solana_dir }}"
     cmd: |
@@ -208,27 +208,27 @@
     chdir: "{{ solana_dir }}"
     cmd: |
       source ~/.profile
-      
+
       solanapath=$(echo $PATH | cut -d: -f1)
       for file in $(find $solanapath -maxdepth 1 -type f); do $file -V; done &> logs/solana-versions.txt
-      
+
       echo set environment:
       solana config set --url http://{{ solana_environment_endpoint }}
-      
+
       echo generate validator keypair:
       echo -n '{{ solana_validator_key.private }}' > keys/validator-keypair.json
       echo get validator publickey:
       solana-keygen pubkey keys/validator-keypair.json | tee keys/validator-keypair.pubkey
       echo set validator keypair:
       solana config set --keypair keys/validator-keypair.json
-      
+
       echo generate voteaccount keypair:
       [ ! -f 'keys/vote-account-keypair.json' ] && solana-keygen new -o keys/vote-account-keypair.json --no-passphrase
       echo get voteaccount publickey:
       solana-keygen pubkey keys/vote-account-keypair.json | tee keys/vote-account-keypair.pubkey
       echo set voteaccount keypair:
       solana create-vote-account keys/vote-account-keypair.json keys/validator-keypair.json
-      
+
       # Setup Balance
       echo Airdrop:
       solana airdrop 5
@@ -236,10 +236,10 @@
       solana balance
       echo Balance Lamports:
       solana balance --lamports
-      
+
       echo Starting Vanity KeyGen:
       #solana-keygen grind --starts-with cwhee1:2 &> logs/cloudwheel-vanity.log &
-      
+
   when: solana_client_installed.stat.isreg is not defined or not solana_client_installed.stat.isreg
 
 
@@ -249,7 +249,7 @@
 #     chdir: "{{ solana_dir }}"
 #     cmd: |
 #       source ~/.profile
-      
+
 #       # # Setup development env
 #       # apt -y install libssl-dev libudev-dev pkg-config zlib1g-dev llvm clang make && \
 #       # su -l {{ default_user }} -c "
@@ -294,7 +294,7 @@
   slurp:
     src: "{{ solana_dir }}/keys/vote-account-keypair.pubkey"
   register: voter_key
-  
+
 - name: Set public keys to variables
   set_fact:
     validator_pubkey: "{{ validator_key.content | b64decode | trim }}"
