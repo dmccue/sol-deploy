@@ -305,7 +305,12 @@
     dest: "~/links.txt"
     mode: '0660'
     content: |
-      Metrics link - https://metrics.solana.com:3000/d/monitor-edge/cluster-telemetry-edge?refresh=60s&orgId=2&var-datasource=Solana%20Metrics%20(read-only)&var-testnet=devnet&var-hostid={{ validator_pubkey }}
+      Metrics link - https://metrics.solana.com:3000/d/monitor-edge/cluster-telemetry-edge?
+      refresh=60s&\
+      orgId=2&\
+      var-datasource=Solana%20Metrics%20(read-only)&\
+      var-testnet=devnet&\
+      var-hostid={{ validator_pubkey }}
 
 - name: test validator rpc port is responding
   wait_for:
