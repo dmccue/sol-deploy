@@ -31,8 +31,9 @@ vpc_subnets:
   private-c:
     cidr: "10.50.6.0/24"
     az: "{{ aws_region }}c"
-key_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
 default_user: "ubuntu"
+key_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') | default('testKeypair') }}"
+key_name_file: "~/.ssh/id_rsa"
 ami_image:
   owner: 099720109477 # ubuntu/canonical
   name: "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-{{ instance_architecture }}-server-"

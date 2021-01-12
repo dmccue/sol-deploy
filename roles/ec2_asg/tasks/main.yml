@@ -14,13 +14,17 @@
     - name: install python packages
       pip:
         name: "{{ item }}"
+        executable: /usr/bin/pip3
+        extra_args: --user
       loop: "{{ local_pip_packages }}"
 
   tags:
     - always
 
 
-- block:
+- name: delete all resources
+  block:
+
     - name: delete ASG
       community.aws.ec2_asg:
         name: "{{ asg_name }}"
@@ -37,7 +41,6 @@
           "tag:Name": "{{ vpc_name }}"
       register: vpcs_match
 
-    # delete Security Groups
     - name: get security groups
       amazon.aws.ec2_group_info:
         filters:
@@ -51,7 +54,6 @@
       loop: "{{ sg_match | community.general.json_query('results[*].security_groups[*]') | default([[]]) | first }}"
       when: sg_match.results and not item.group_name == "default"
 
-    # delete Route Tables
     - name: get vpc route tables
       community.aws.ec2_vpc_route_table_info:
         region: "{{ aws_region }}"
@@ -68,7 +70,6 @@
       loop: "{{ vpc_route_tables | community.general.json_query('results[*].route_tables[*]') | default([[]]) | first }}"
       when: vpc_route_tables.results and item.associations | selectattr('main') | length == 0
 
-    # delete IGW
     - name: delete vpc IGW
       community.aws.ec2_vpc_igw:
         vpc_id: "{{ item.vpc_id }}"
@@ -76,7 +77,6 @@
         state: absent
       loop: "{{ vpcs_match.vpcs }}"
 
-    # delete NACLs
     - name: get vpc NACLs
       community.aws.ec2_vpc_nacl_info:
         region: "{{ aws_region }}"
@@ -91,7 +91,6 @@
       loop: "{{ vpc_nacls | community.general.json_query('results[*].nacls[*]') | default([[]]) | first }}"
       when: vpc_nacls.results and not item.is_default
 
-    # delete Subnets
     - name: get vpc subnets
       amazon.aws.ec2_vpc_subnet_info:
         filters:
@@ -106,7 +105,6 @@
       loop: "{{ vpc_subnets | community.general.json_query('results[*].subnets[*]') | default([[]]) | first }}"
       when: vpc_subnets.results
 
-    # delete VPC
     - name: delete vpc
       amazon.aws.ec2_vpc_net:
         name: "{{ item.tags.Name }}"
@@ -115,10 +113,22 @@
         state: absent
       loop: "{{ vpcs_match.vpcs }}"
 
+    - name: delete keypair
+      amazon.aws.ec2_key:
+        name: "{{ key_name }}"
+        state: absent
+
   tags:
     - delete
     - never
 
+- name: create public key from private key
+  shell: ssh-keygen -y -f {{ key_name_file }} > {{ key_name_file }}.pub
+
+- name: create key pair using key_material obtained using 'file' lookup plugin
+  amazon.aws.ec2_key:
+    name: "{{ key_name }}"
+    key_material: "{{ lookup('file', key_name_file + '.pub') }}"
 
 - name: Get AMI ID
   amazon.aws.ec2_ami_info:
@@ -243,6 +253,7 @@
 
 - name: setup group for application tag
   block:
+
     - name: Gather information on ASG Instances
       community.aws.ec2_asg_info:
         name: "{{ asg_name }}"
