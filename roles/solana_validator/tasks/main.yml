@@ -346,8 +346,13 @@
   retries: 5
   delay: 2
 
-- name: debug
-  debug: msg="{{ result.json.result | to_nice_yaml }}"
+- name: debug - vote accounts
+  debug: msg="{{ result.json.result | to_yaml }}"
   #debug: msg="{{ result.json.result | community.general.json_query('result[*].pubkey') | default([[]])| first }}"
-
-- debug: msg="validator public key:{{ validator_pubkey }} voter public key:{{ voter_pubkey }}"
+  
+- name: Validator public key
+  debug: msg="validator public key:{{ validator_pubkey }}"
+- name: Voter public key
+  debug: msg="voter public key:{{ voter_pubkey }}"
+- name: SSH access details
+  debug: msg="ssh {{ default_user }}@{{ ansible_host }}"

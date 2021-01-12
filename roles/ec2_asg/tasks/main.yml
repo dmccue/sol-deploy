@@ -243,13 +243,11 @@
     tags:
       - environment: test
         propagate_at_launch: true
+  
+- name: Gather information on ASG Instances
+  community.aws.ec2_asg_info:
+    name: "{{ asg_name }}"
   register: autoscaling_group
-
-- name: Set list of autoscaling instance IDs
-  set_fact:
-    asg_instances: "{{ autoscaling_group.instances }}"
-  when: autoscaling_group is defined
-
 
 - name: setup group for application tag
   block:
@@ -258,12 +256,12 @@
       community.aws.ec2_asg_info:
         name: "{{ asg_name }}"
       register: autoscaling_group
-
+      
     - name: gather information on ec2 instances
       community.aws.ec2_instance_info:
-        instance_ids: "{{ autoscaling_group | community.general.json_query('results[*].instances[*].instance_id') | default([[]])| first }}"
+        instance_ids: "{{ autoscaling_group | community.general.json_query('results[*].instances[*].instance_id') | default([[]]) | first }}"
       register: ec2_instances
-
+    
     - name: create instance group
       add_host:
         name: "{{ item.instance_id }}"
@@ -278,3 +276,21 @@
   tags:
     - application
     - never
+
+
+- name: gather information on ec2 instances
+  community.aws.ec2_instance_info:
+    instance_ids: "{{ autoscaling_group | community.general.json_query('results[*].instances[*].instance_id') | default([[]]) | first }}"
+  register: ec2_instances
+
+- name: create instance group
+  add_host:
+    name: "{{ item.instance_id }}"
+    ansible_host: "{{ item.public_ip_address }}"
+    ansible_user: "{{ default_user }}"
+    ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+    group: asg_instances
+  loop: "{{ ec2_instances.instances }}"
+  loop_control:
+    label: "{{ item.instance_id }}"
+
