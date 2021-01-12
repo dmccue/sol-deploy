@@ -5,12 +5,12 @@
   gather_facts: false
   hosts: localhost
   roles:
-    - ec2-asg
+    - ec2_asg
 
 - name: configure instance application
   gather_facts: true
   hosts: asg_instances
   roles:
-    - solana-validator
+    - solana_validator
   tags:
     - application
