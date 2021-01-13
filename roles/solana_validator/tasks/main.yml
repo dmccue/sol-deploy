@@ -356,3 +356,4 @@
   debug: msg="voter public key:{{ voter_pubkey }}"
 - name: SSH access details
   debug: msg="ssh {{ default_user }}@{{ ansible_host }}"
+
