@@ -118,7 +118,12 @@
         mode: '0775'
         content: |
           #!/bin/bash
-          NDEBUG=1 ~/solana/multinode-demo/bench-tps.sh --entrypoint devnet.solana.com:8001 --faucet devnet.solana.com:9900 --duration 60 --tx_count 50
+          NDEBUG=1 solana-bench-tps \
+          --no-multi-client \
+          --entrypoint devnet.solana.com:8001 \
+          --faucet devnet.solana.com:9900 \
+          --duration 60 \
+          --tx_count 50
 
     - name: create solana directory
       file:
@@ -164,7 +169,6 @@
         --wal-recovery-mode skip_any_corrupted_record \
         --limit-ledger-size \
         --log                 {{ solana_dir }}/logs/solana-validator.log
-      EOF
 
 - name: Create solana-sys-tuner.sh
   copy:
