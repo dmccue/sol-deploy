@@ -3,6 +3,7 @@
 aws_region: "eu-west-1"
 local_pip_packages:
   - boto
+  - botocore
   - boto3
   - ansible
 destinationCidrBlock: "0.0.0.0/0"

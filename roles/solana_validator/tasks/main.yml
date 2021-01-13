@@ -282,10 +282,6 @@
 
   become: true
 
-
-- name: List ssh endpoints
-  debug: msg="ssh {{ default_user }}@{{ ansible_host | default("unknown") }}"
-
 - name: retrieve pub validator-keypair
   slurp:
     src: "{{ solana_dir }}/keys/validator-keypair.pubkey"
@@ -295,7 +291,7 @@
     src: "{{ solana_dir }}/keys/vote-account-keypair.pubkey"
   register: voter_key
 
-- name: Set public keys to variables
+- name: set public keys to variables
   set_fact:
     validator_pubkey: "{{ validator_key.content | b64decode | trim }}"
     voter_pubkey: "{{ voter_key.content | b64decode | trim }}"
@@ -349,7 +345,7 @@
 - name: debug - vote accounts
   debug: msg="{{ result.json.result | to_yaml }}"
   #debug: msg="{{ result.json.result | community.general.json_query('result[*].pubkey') | default([[]])| first }}"
-  
+
 - name: Validator public key
   debug: msg="validator public key:{{ validator_pubkey }}"
 - name: Voter public key

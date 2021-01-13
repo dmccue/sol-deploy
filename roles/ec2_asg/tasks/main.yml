@@ -243,7 +243,7 @@
     tags:
       - environment: test
         propagate_at_launch: true
-  
+
 - name: Gather information on ASG Instances
   community.aws.ec2_asg_info:
     name: "{{ asg_name }}"
@@ -256,12 +256,12 @@
       community.aws.ec2_asg_info:
         name: "{{ asg_name }}"
       register: autoscaling_group
-      
+
     - name: gather information on ec2 instances
       community.aws.ec2_instance_info:
         instance_ids: "{{ autoscaling_group | community.general.json_query('results[*].instances[*].instance_id') | default([[]]) | first }}"
       register: ec2_instances
-    
+
     - name: create instance group
       add_host:
         name: "{{ item.instance_id }}"
