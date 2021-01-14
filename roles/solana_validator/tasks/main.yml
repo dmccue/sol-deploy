@@ -69,7 +69,7 @@
           LimitNOFILE={{ sysctl_config['vm.max_map_count'] }}
           LogRateLimitIntervalSec=0
           Environment="PATH=/bin:/usr/bin:/home/{{ default_user }}/.local/share/solana/install/active_release/bin"
-          ExecStart={{ solana_dir }}/bin/validator.sh
+          ExecStart={{ solana_dir }}/bin/solana-validator.sh
 
           [Install]
           WantedBy=multi-user.target
@@ -148,9 +148,9 @@
     - logs
     - keys
 
-- name: create validator.sh
+- name: create solana-validator.sh
   copy:
-    dest: "{{ solana_dir }}/bin/validator.sh"
+    dest: "{{ solana_dir }}/bin/solana-validator.sh"
     mode: '0740'
     content: |
       #!/bin/bash
@@ -160,8 +160,8 @@
 
       solana-validator \
         --identity            {{ solana_dir }}/keys/validator-identity.json \
-        --vote-account        {{ solana_dir }}/keys/vote-account-keypair.json \
-        --ledger              {{ solana_dir }}/validator-ledger \
+        --vote-account        {{ solana_dir }}/keys/validator-vote-account.json \
+        --ledger              {{ solana_dir }}/ledger \
         --rpc-port            {{ solana_port_rpc }} \
         --dynamic-port-range  {{ solana_port_dynamicrange }} \
         --no-untrusted-rpc \
@@ -301,20 +301,23 @@
 - name: retrieve pub validator-identity
   slurp:
     src: "{{ solana_dir }}/keys/validator-identity.json.pub"
-  register: validator_pubkey
+  register: key_validator
 - name: retrieve pub validator-vote-account
   slurp:
     src: "{{ solana_dir }}/keys/validator-vote-account.json.pub"
-  register: voter_pubkey
+  register: key_voter
 - name: retrieve pub validator-stake-account
   slurp:
     src: "{{ solana_dir }}/keys/validator-stake-account.json.pub"
-  register: stake_pubkey
+  register: key_stake
 
 - name: set public keys to variables
   set_fact:
-    validator_pubkey: "{{ validator_key.content | b64decode | trim }}"
-    voter_pubkey: "{{ voter_key.content | b64decode | trim }}"
+    solana_pubkey:
+      validator:  "{{ key_validator.content | b64decode | trim }}"
+      voter:      "{{ key_voter.content     | b64decode | trim }}"
+      stake:      "{{ key_stake.content     | b64decode | trim }}"
+
 
 - name: create diagnostic links
   copy:
@@ -326,7 +329,7 @@
       orgId=2&\
       var-datasource=Solana%20Metrics%20(read-only)&\
       var-testnet=devnet&\
-      var-hostid={{ validator_pubkey }}
+      var-hostid={{ solana_pubkey.validator }}
 
 - name: test validator rpc port is responding
   wait_for:
@@ -343,7 +346,7 @@
     body_format: json
   delegate_to: localhost
   register: result
-  until: "validator_pubkey in result.json | community.general.json_query('result[*].pubkey')"
+  until: "solana_pubkey.validator in result.json | community.general.json_query('result[*].pubkey')"
   retries: 10
   delay: 10
 
@@ -367,9 +370,11 @@
   #debug: msg="{{ result.json.result | community.general.json_query('result[*].pubkey') | default([[]])| first }}"
 
 - name: Validator public key
-  debug: msg="validator public key:{{ validator_pubkey }}"
+  debug: msg="validator public key:{{ solana_pubkey.validator }}"
 - name: Voter public key
-  debug: msg="voter public key:{{ voter_pubkey }}"
+  debug: msg="voter public key:{{ solana_pubkey.voter }}"
+- name: Stake public key
+  debug: msg="stake public key:{{ solana_pubkey.stake }}"
 - name: SSH access details
   debug: msg="ssh {{ default_user }}@{{ ansible_host }}"
 
