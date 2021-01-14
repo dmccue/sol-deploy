@@ -11,8 +11,8 @@
 
     - name: update distro
       apt:
-        update_cache: true
-        upgrade: true
+        update_cache: 'true'
+        upgrade: 'true'
 
     - name: install packages
       apt:
@@ -230,7 +230,6 @@
       solana config set --url http://{{ solana_environment_endpoint }}
 
       # create private keys if empty
-      if ! solana address; then solana-keygen new --no-passphrase; fi
       for keyname in validator-identity validator-vote-account validator-stake-account; do
         [ ! -s "keys/$keyname.json" ] && \
           solana-keygen new --no-passphrase -so "keys/$keyname.json"
@@ -238,12 +237,14 @@
       
       # create public keys
       for keyname in $(ls keys/*.json); do
-        solana-keygen pubkey "$keyname" | tee "$keyname.pub"
+        echo "keyname: $keyname:"
+        solana-keygen pubkey "$keyname" | tee "$keyname.pub"; echo
       done
 
       # apply keys
-      solana config set --keypair keys/validator-identity.json
+      solana config set --keypair {{ solana_dir }}/keys/validator-identity.json
       solana create-vote-account keys/validator-vote-account.json keys/validator-identity.json
+      solana create-stake-account keys/validator-stake-account.json 100 || true
 
       # Setup Balance
       echo Airdrop:
