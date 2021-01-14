@@ -6,9 +6,11 @@ solana_environment_entrypoint: entrypoint.devnet.solana.com
 solana_environment_entrypoint_port: 8001
 solana_port_rpc: 8899
 solana_port_dynamicrange: 8000-8010
-solana_validator_key:
-  name: 'test_key' # public: 'testCcDbxeTvA138gUVeYu5SdDYyjKCxWxmyuDbGJhQ'
-  private: '[238,212,138,196,165,50,98,49,89,57,132,66,89,245,172,220,46,228,57,43,169,27,126,97,240,168,68,34,159,164,213,13,13,59,115,2,12,129,211,203,224,38,65,161,15,197,136,92,168,32,163,195,108,86,220,103,131,230,121,183,235,129,159,131]'
+solana_key:
+  validator:
+    name: 'test_key' # public: 'testCcDbxeTvA138gUVeYu5SdDYyjKCxWxmyuDbGJhQ'
+    private: '[238,212,138,196,165,50,98,49,89,57,132,66,89,245,172,220,46,228,57,43,169,27,126,97,240,168,68,34,159,164,213,13,13,59,115,2,12,129,211,203,224,38,65,161,15,197,136,92,168,32,163,195,108,86,220,103,131,230,121,183,235,129,159,131]'
+  
 sysctl_config:
   net.ipv4.ip_forward: 1
   net.core.rmem_default: 134217728

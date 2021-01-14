@@ -155,9 +155,11 @@
     content: |
       #!/bin/bash
       export SOLANA_METRICS_CONFIG="host=https://metrics.solana.com:8086,db=devnet,u=scratch_writer,p=topsecret"
+      export RUST_LOG=${RUST_LOG:-solana=info,solana_runtime::message_processor=debug}
+      export RUST_BACKTRACE=1
 
       solana-validator \
-        --identity            {{ solana_dir }}/keys/validator-keypair.json \
+        --identity            {{ solana_dir }}/keys/validator-identity.json \
         --vote-account        {{ solana_dir }}/keys/vote-account-keypair.json \
         --ledger              {{ solana_dir }}/validator-ledger \
         --rpc-port            {{ solana_port_rpc }} \
@@ -168,7 +170,8 @@
         --entrypoint          {{ solana_environment_entrypoint }}:{{ solana_environment_entrypoint_port }} \
         --wal-recovery-mode skip_any_corrupted_record \
         --limit-ledger-size \
-        --log                 {{ solana_dir }}/logs/solana-validator.log
+        --log                 {{ solana_dir }}/logs/solana-validator.log \
+        --init-complete-file  {{ solana_dir }}/logs/init-completed
 
 - name: Create solana-sys-tuner.sh
   copy:
@@ -206,6 +209,13 @@
       which solana || ./bin/solana-install-init stable
   when: solana_client_installed.stat.isreg is not defined or not solana_client_installed.stat.isreg
 
+
+- name: set validator private key
+  copy:
+    dest: "{{ solana_dir }}/keys/validator-identity.json"
+    content: "{{ solana_key.validator.private | default('') }}"
+
+
 - name: install solana validator
   shell:
     executable: /bin/bash
@@ -219,19 +229,21 @@
       echo set environment:
       solana config set --url http://{{ solana_environment_endpoint }}
 
-      echo generate validator keypair:
-      echo -n '{{ solana_validator_key.private }}' > keys/validator-keypair.json
-      echo get validator publickey:
-      solana-keygen pubkey keys/validator-keypair.json | tee keys/validator-keypair.pubkey
-      echo set validator keypair:
-      solana config set --keypair keys/validator-keypair.json
+      # create private keys if empty
+      if ! solana address; then solana-keygen new --no-passphrase; fi
+      for keyname in validator-identity validator-vote-account validator-stake-account; do
+        [ ! -s "keys/$keyname.json" ] && \
+          solana-keygen new --no-passphrase -so "keys/$keyname.json"
+      done
+      
+      # create public keys
+      for keyname in $(ls keys/*.json); do
+        solana-keygen pubkey "$keyname" | tee "$keyname.pub"
+      done
 
-      echo generate voteaccount keypair:
-      [ ! -f 'keys/vote-account-keypair.json' ] && solana-keygen new -o keys/vote-account-keypair.json --no-passphrase
-      echo get voteaccount publickey:
-      solana-keygen pubkey keys/vote-account-keypair.json | tee keys/vote-account-keypair.pubkey
-      echo set voteaccount keypair:
-      solana create-vote-account keys/vote-account-keypair.json keys/validator-keypair.json
+      # apply keys
+      solana config set --keypair keys/validator-identity.json
+      solana create-vote-account keys/validator-vote-account.json keys/validator-identity.json
 
       # Setup Balance
       echo Airdrop:
@@ -286,14 +298,18 @@
 
   become: true
 
-- name: retrieve pub validator-keypair
+- name: retrieve pub validator-identity
   slurp:
-    src: "{{ solana_dir }}/keys/validator-keypair.pubkey"
-  register: validator_key
-- name: retrieve pub vote-account-keypair
+    src: "{{ solana_dir }}/keys/validator-identity.json.pub"
+  register: validator_pubkey
+- name: retrieve pub validator-vote-account
   slurp:
-    src: "{{ solana_dir }}/keys/vote-account-keypair.pubkey"
-  register: voter_key
+    src: "{{ solana_dir }}/keys/validator-vote-account.json.pub"
+  register: voter_pubkey
+- name: retrieve pub validator-stake-account
+  slurp:
+    src: "{{ solana_dir }}/keys/validator-stake-account.json.pub"
+  register: stake_pubkey
 
 - name: set public keys to variables
   set_fact:
